@@ -17,7 +17,6 @@ class FSWatcher extends events.EventEmitter {
         if(stats1 === null || stats2 === null) return false;
         if(stats1.mtime?.valueOf() !== stats2.mtime?.valueOf()) return false;
         if(stats1.size !== stats2.size) return false;
-        if(stats1.atime?.valueOf() !== stats2.atime?.valueOf()) return false;
         if(stats1.birthtime?.valueOf() !== stats2.birthtime?.valueOf()) return false;
         if(stats1.blksize !== stats2.blksize) return false;
         if(stats1.blocks !== stats2.blocks) return false;
