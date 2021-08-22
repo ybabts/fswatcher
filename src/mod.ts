@@ -34,24 +34,7 @@ class FSWatcher extends events.EventEmitter {
         return true;
     }
     constructor(filepath: string, pollingRate: number = 100) {
-        super();        
-        // Crashes whenever a file in the  directory is deleted. Works with individual files right now.
-
-        // const stats = Deno.statSync(filepath);
-        // if(stats.isDirectory) {
-        //     const dir = Deno.readDirSync(filepath);
-        //     for(const file of dir) {
-        //         const watcher = new FSWatcher(filepath+'/'+file.name, pollingRate);
-        //         this._watchers.push(watcher);
-        //         watcher.on('modify', (path, prevStats, currStats) => {
-        //             this.emit('modify', path, prevStats, currStats);
-        //         })
-        //     }
-        //     this._intervalID = setInterval(() => {
-
-        //     });
-        //     return this;
-        // }
+        super();
         this._prevStats = Deno.statSync(filepath);
         this._intervalID = setInterval(() => {
             const newStats = Deno.statSync(filepath);
