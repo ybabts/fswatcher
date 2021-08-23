@@ -1,4 +1,5 @@
-import * as events from 'https://deno.land/std@0.93.0/node/events.ts'
+import * as events from 'https://deno.land/std@0.93.0/node/events.ts';
+import * as fs from 'https://deno.land/std@0.105.0/fs/mod.ts';
 
 const requiredPermissions: Deno.PermissionDescriptor = { name: 'read' };
 
@@ -10,40 +11,48 @@ interface FSWatcher {
 }
 
 class FSWatcher extends events.EventEmitter {
-    private _intervalID: number;
-    private _watchers: Array<FSWatcher> = new Array;
-    private _prevStats: Deno.FileInfo | null = null;
-    private static _isStatsEqual(stats1: Deno.FileInfo | null, stats2: Deno.FileInfo | null): boolean {
-        if(stats1 === null || stats2 === null) return false;
-        if(stats1.mtime?.valueOf() !== stats2.mtime?.valueOf()) return false;
-        if(stats1.size !== stats2.size) return false;
-        if(stats1.birthtime?.valueOf() !== stats2.birthtime?.valueOf()) return false;
-        if(stats1.blksize !== stats2.blksize) return false;
-        if(stats1.blocks !== stats2.blocks) return false;
-        if(stats1.dev !== stats2.dev) return false;
-        if(stats1.gid !== stats2.gid) return false;
-        if(stats1.ino !== stats2.ino) return false;
-        if(stats1.isDirectory !== stats2.isDirectory) return false;
-        if(stats1.isFile !== stats2.isFile) return false;
-        if(stats1.isSymlink !== stats2.isSymlink) return false;
-        if(stats1.mode !== stats2.mode) return false;
-        if(stats1.nlink !== stats2.nlink) return false;
-        if(stats1.rdev !== stats2.rdev) return false;
-        if(stats1.uid !== stats2.uid) return false;
-        return true;
-    }
-    constructor(filepath: string, pollingRate: number = 100) {
+    private _path: string;
+    private _parent: FSWatcher | null = null;
+    private _watchers: Record<string,FSWatcher> = {};
+    private _interval: number = 0;
+    private _currentStats: Deno.FileInfo;
+    constructor(filepath: string, pollingRate: number = 100, recursive = false, parent?: FSWatcher) {
         super();
-        this._prevStats = Deno.statSync(filepath);
-        this._intervalID = setInterval(() => {
-            const newStats = Deno.statSync(filepath);
-            if(!FSWatcher._isStatsEqual(newStats, this._prevStats)) this.emit('modify', filepath, this._prevStats, newStats);
-            this._prevStats = newStats;
-        }, pollingRate);
+        this._path = filepath;
+        if(parent) this._parent = parent;
+        if(!fs.existsSync(filepath)) throw new Error('File does not exist');
+        this._currentStats = Deno.statSync(filepath);
+        if(this._currentStats.isFile) {
+            this._interval = setInterval(() => {
+                if(!fs.existsSync(filepath)) return this.delete();
+                const prev = this._currentStats;
+                const curr = Deno.statSync(filepath);
+                if(prev.mtime?.valueOf() !== curr.mtime?.valueOf()) this.emit('modify', filepath, prev, curr);
+                this._currentStats = curr;
+            }, pollingRate);
+        }
+        if(this._currentStats.isDirectory && (this._parent ? recursive : true)) {
+            const dir = Array.from(Deno.readDirSync(filepath));
+            this._watchers = Object.fromEntries(dir.map(v => {
+                const watcher = new FSWatcher(filepath+'/'+v.name, pollingRate, recursive, this);
+                watcher.on('modify', (filepath, prev, curr) => this.emit('modify', filepath, prev, curr));
+                return [filepath+'/'+v.name, watcher];
+            }));
+            this._interval = setInterval(() => {
+                if(!fs.existsSync(filepath)) return this.delete();
+                const dir = Array.from(Deno.readDirSync(filepath)).map(v => v.name);
+                for(const newFile of dir.filter(v => this._watchers[filepath+'/'+v] === undefined)) {
+                    const watcher = new FSWatcher(filepath+'/'+newFile, pollingRate, recursive, this);
+                    this._watchers[filepath+'/'+newFile] = watcher;
+                    watcher.on('modify', (filepath, prev, curr) => this.emit('modify', filepath, prev, curr));
+                }
+            }, pollingRate);
+        }
     }
     public delete(): void {
-        for(const watcher of this._watchers) watcher.delete();
-        clearInterval(this._intervalID);
+        clearInterval(this._interval);
+        if(this._parent) delete this._parent?._watchers[this._path];
+        for(const watcher of Object.values(this._watchers)) watcher.delete();
     }
 }
 
