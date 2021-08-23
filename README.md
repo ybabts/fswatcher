@@ -1,5 +1,5 @@
 # FSWatcher
-A simple event listener to listen for changes for the file system. Requires Deno read permissions to function. The current iteration of FSWatcher only supports single files, however recursive directory watching should be easy to implement.
+A simple event listener to listen for changes for the file system. Requires Deno read permissions to function. Has an option to recursively watch files in whole directories if you're into that.
 
 ## Import
 ```ts
@@ -19,5 +19,5 @@ watcher.on('modify', (file, prev, curr) => {
 });
 ```
 
-## Caviots
-The event triggers on any file stat changes, so saving the file in place will trigger the event. The current was this is being done won't allow you to get what exactly changed in the file if it isn't append only, maybe in the future I'll make this a bit more advanced.
+## Robustness
+FSWatcher will catch new files and remove old ones from it's watch list when targeting a directory. It should not crash (I hope) when a file goes missing or a new file appears. If you run into issues, please open an issue.
