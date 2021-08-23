@@ -2,7 +2,9 @@
 A simple event listener to listen for changes for the file system. Requires Deno read permissions to function. Has an option to recursively watch files in whole directories if you're into that.
 
 ## Why though?
-Why does this exist? The Deno FSWatch has some limitions, one of which is detail. Deno's watcher only tells you that something has changed and where, but nothing else. There are also some corner-case scenarios where Deno's watcher doesn't detect changes properly, and that's why I built this. I would like to eventually allow this to tell exactly what bits in the file has changed and have that on the event but that's something for a future update.
+> Why does this exist? Deno already has a watchFS function.
+
+The Deno's watchFS is a little weird, it tells you what changed but no other useful information about it. There are also some corner-case scenarios where Deno's watcher doesn't detect changes properly, and that's why I built this. I would like to eventually allow this to tell exactly what bits in the file has changed and have that on the event but that's something for a future update.
 
 ## Import
 ```ts
